@@ -5,6 +5,8 @@ import xlrd
 def reset_meta_db(cur):
     query = "Truncate table nds.meta_source_files"
     cur.execute(query)
+    query = "Truncate table nds.tmp_load"
+    cur.execute(query)
 
 
 def record_all_source_files(file_path, cur):
@@ -36,11 +38,11 @@ def get_files(cur, process_state):
     return rows
 
 
-def process_file(full_file_path, cur):
+def process_file(full_file_path, cur,conn):
     """
     insertquery = "INSERT INTO nds.meta_source_files(file_name) VALUES('{0}') ON CONFLICT (file_name) DO NOTHING"
     """
-    insert_query = "Insert into nds.temp_"
+    insert_query = "Insert into nds.tmp_load(loan_code,value) values('{0}','{1}')"
     book = xlrd.open_workbook(full_file_path)
 
     # print sheet names
@@ -54,15 +56,28 @@ def process_file(full_file_path, cur):
     # read a row
     # print ("Sheet Header (aka 1st Row)",data_sheet.row_values(0))
     totals = [0, max_rows]
+
     # read a row slice
     for ii in range(0, max_rows):
         # print ii;
         rows = data_sheet.row_slice(rowx=ii, start_colx=0, end_colx=max_cols)
-        print rows[1]
+        a=rows[0].value
+        b=str(rows[3].value)
+        data=[a,b]
+       # print insert_query,data
+        try:
+            cur.execute(insert_query.format(a,b))
+            totals[0] = totals[0] + 1
+
+        except:
+            pass
+
+
         # print ("Load row into TempTable",rows,ii)
         # for cell in rows:
         #    print cell.value
-    totals[0] = totals[0] + ii
+
+    conn.commit()
     return totals
 
 
