@@ -1,4 +1,5 @@
 import glob
+import xlrd
 
 
 def reset_meta_db(cur):
@@ -17,7 +18,6 @@ def record_all_source_files(file_path, cur):
         cur.execute(insertquery.format(f))
         result = cur.rowcount
         total_inserted = result + total_inserted
-
     return total_inserted
 
 
@@ -34,3 +34,46 @@ def get_files(cur, process_state):
     rows = cur.fetchall()
 
     return rows
+
+
+def process_file(full_file_path, cur):
+    """
+    insertquery = "INSERT INTO nds.meta_source_files(file_name) VALUES('{0}') ON CONFLICT (file_name) DO NOTHING"
+    """
+    insert_query = "Insert into nds.temp_"
+    book = xlrd.open_workbook(full_file_path)
+
+    # print sheet names
+    # print ("Total Sheets",book.nsheets,"Sheet Names",book.sheet_names())
+
+    # get the first worksheet
+    data_sheet = book.sheet_by_index(1)
+    max_rows = data_sheet.nrows
+    max_cols = data_sheet.ncols
+
+    # read a row
+    # print ("Sheet Header (aka 1st Row)",data_sheet.row_values(0))
+    totals = [0, max_rows]
+    # read a row slice
+    for ii in range(0, max_rows):
+        # print ii;
+        rows = data_sheet.row_slice(rowx=ii, start_colx=0, end_colx=max_cols)
+        print rows[1]
+        # print ("Load row into TempTable",rows,ii)
+        # for cell in rows:
+        #    print cell.value
+    totals[0] = totals[0] + ii
+    return totals
+
+
+def xls_to_csv(xls_filename, csv_filename):
+    wb = xlrd.open_workbook(xls_filename)
+    sh = wb.sheet_by_index(1)
+
+    fh = open(csv_filename, "wb")
+    csv_out = unicodecsv.writer(fh, encoding='utf-8', delimiter=';')
+
+    for row_number in range(1, sh.nrows):
+        csv_out.writerow(sh.row_values(row_number))
+
+    fh.close()
